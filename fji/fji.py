@@ -469,30 +469,44 @@ class AnnSky:
 
 def FWHM(data,xc,yc):
     from astropy.modeling.models import Gaussian2D
+    from astropy.modeling.models import Moffat2D
     from astropy.modeling.models import Const2D
-
+    from astropy.modeling.models import Polynomial2D
     from astropy.modeling.fitting import LevMarLSQFitter
 
     # Data:
-    x, y = np.mgrid[:data.shape[1], :data.shape[0]]
+    x, y = np.mgrid[:data.shape[0], :data.shape[1]]
     
     # Model:
-    cte0 = np.nanmean(data)
-    Cte = Const2D(cte0)
+    cte0 = 0.06
+    Cte = Polynomial2D(degree=1)
     
-    Gauss = Gaussian2D(amplitude=data[int(yc),int(xc)], x_mean=xc, y_mean=yc)
+        # Model:
+    cte0 = 0.06
+    Cte = Const2D(cte0)
+
+    
+    Moff = Moffat2D(amplitude=1, x_0=xc, y_0=yc, gamma=20, alpha=2)
+    
+    """    
+    Gauss = Gaussian2D(amplitude=data[int(yc),int(xc)]/2, x_mean=xc, y_mean=yc,x_stddev=1,y_stddev=1)
     # Parametros fijos
     Gauss.x_mean.fixed = True
     Gauss.y_mean.fixed = True
+    Gauss.theta.fixed = True
+        model = Gauss + Cte
 
-    model = Gauss+Cte
+    """
 
+    model = Moff + Cte
+    """
     # Parametros ligados: imponemos que sea una gaussiana redonda
     def tie(model):
         return model.y_stddev_0
     
     model.x_stddev_0.tied = tie
-
+    """
+    
     # Fit
     fitter = LevMarLSQFitter()
     import warnings
@@ -500,12 +514,14 @@ def FWHM(data,xc,yc):
         # Ignore model linearity warning from the fitter
         warnings.simplefilter('ignore')
         fit = fitter(model, x, y, data)
+    gamma = fit.gamma_0
+    alpha = fit.alpha_0
     
-    sigma = fit.x_stddev_0.value
+    FWHM = 2. * gamma * np.sqrt(2 ** (1/alpha) -1) #fit.x_stddev_0.value
  
-    FWHM = 2.3548 * sigma
+    #FWHM = 2.3548 * sigma
     
-    return FWHM
+    return FWHM, fit
 
 
 
@@ -556,6 +572,28 @@ def Seeing(data, r = 11):
 
 
 """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
